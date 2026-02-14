@@ -678,8 +678,8 @@ const $A = (r) => {
   const B = AA(null), { width: W = 0, height: V = 0 } = qA({ ref: B, box: "border-box" }), P = AA(null);
   return BA(() => {
     if (B.current)
-      return console.log("init"), P.current = RA(), B.current.appendChild(P.current.renderer.domElement), B.current.appendChild(P.current.vrButton), () => {
-        console.log("kill"), P.current.renderer.domElement.remove(), P.current.vrButton.remove();
+      return P.current || (P.current = RA()), B.current.appendChild(P.current.renderer.domElement), B.current.appendChild(P.current.vrButton), () => {
+        P.current.renderer.domElement.remove(), P.current.vrButton.remove();
       };
   }, []), BA(() => {
     P.current && W > 0 && V > 0 && (console.log("Resizing to:", { width: W, height: V }), P.current.setSize(W, V));
