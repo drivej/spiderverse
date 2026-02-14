@@ -19,7 +19,7 @@ function initSpiderverse() {
 
   world.renderer.shadowMap.enabled = true;
 
-  const plane = createInfiniteColorPlane();
+  const plane = createInfiniteColorPlane({ color: 0xbbbbbb });
   // plane.receiveShadow = true;
   world.scene.add(plane);
 

@@ -573,7 +573,7 @@ function RA() {
   r.camera.position.set(-63, 46, 37), r.initControllers(), r.initOrbitControls(), r.renderer.xr.addEventListener("sessionstart", () => {
     b = r.dolly;
   }), r.renderer.shadowMap.enabled = !0;
-  const B = bA();
+  const B = bA({ color: 12303291 });
   r.scene.add(B);
   const W = new NA();
   W.setElevation(0.04), r.scene.add(W), W.startSunrise();

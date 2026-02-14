@@ -1,4 +1,5 @@
 import { Link, Outlet, useLocation } from 'react-router-dom';
+import pkg from '../package.json';
 import './App.css';
 
 function App() {
@@ -43,6 +44,7 @@ function App() {
         >
           Component
         </Link>
+        <span>{pkg.name}</span>
         <span style={{ marginLeft: 'auto', color: '#888', fontSize: '0.9rem' }}>
           Current Route: {location.pathname}
         </span>
