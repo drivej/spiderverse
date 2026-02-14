@@ -1,0 +1,1 @@
+export { SpiderVerse } from './MyComponentReact';
