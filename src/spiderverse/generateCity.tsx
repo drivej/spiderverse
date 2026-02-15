@@ -1,4 +1,4 @@
-import { Grid, rand, XRWorld } from '@drivej/xrworld';
+import { Grid, rand } from '@drivej/xrworld';
 import * as THREE from 'three';
 import imgCityBlock from '../assets/images/city-block.jpg?url';
 import { Building } from './Building';
@@ -39,7 +39,8 @@ export function createCityStreets(grid: Grid<any>) {
 }
 
 export class City extends THREE.Group {
-  buildings: THREE.Object3D[] = [];
+  buildings: Building[] = [];
+  streets: THREE.Object3D[] = [];
 
   constructor(config: CityConfig = { rows: 10, columns: 10 }) {
     super();
@@ -54,7 +55,8 @@ export class City extends THREE.Group {
     const streets = createCityStreets(grid);
     streets.position.set(grid.width * 0.5 - grid.colWidth * 0.5, 0.5, grid.height * 0.5 - grid.colWidth * 0.5);
     this.add(streets);
-    this.buildings.push(streets);
+    // this.buildings.push(streets);
+    this.streets.push(streets);
 
     grid.cells.forEach((cell) => {
       const cityBlock = new THREE.Object3D();
@@ -75,32 +77,32 @@ export class City extends THREE.Group {
   }
 }
 
-export function generateCity(world: XRWorld, rows = 10, columns = 10) {
-  const group = new THREE.Group();
-  const buildings: Building[] = [];
-  const grid = new Grid(rows, columns, cityBlockWidth + sidewalkWidth * 2 + laneWidth * 2 + shoulderWidth * 2, cityBlockDepth + sidewalkWidth * 2 + laneWidth * 2 + shoulderWidth * 2);
+// export function generateCity(world: XRWorld, rows = 10, columns = 10) {
+//   const group = new THREE.Group();
+//   const buildings: Building[] = [];
+//   const grid = new Grid(rows, columns, cityBlockWidth + sidewalkWidth * 2 + laneWidth * 2 + shoulderWidth * 2, cityBlockDepth + sidewalkWidth * 2 + laneWidth * 2 + shoulderWidth * 2);
 
-  grid.cells.forEach((cell) => {
-    const cityBlock = new THREE.Object3D();
-    cityBlock.position.setX(cell.x);
-    cityBlock.position.setZ(cell.y);
+//   grid.cells.forEach((cell) => {
+//     const cityBlock = new THREE.Object3D();
+//     cityBlock.position.setX(cell.x);
+//     cityBlock.position.setZ(cell.y);
 
-    const height = buildingFloorHeight * rand(4, 40, true);
-    let buildingWidth = rand(cityBlockWidth * 0.5, cityBlockWidth, true);
-    buildingWidth = ~~(buildingWidth / 30) * 30;
-    let buildingDepth = rand(cityBlockDepth * 0.5, cityBlockDepth, true);
-    buildingDepth = ~~(buildingDepth / 30) * 30;
+//     const height = buildingFloorHeight * rand(4, 40, true);
+//     let buildingWidth = rand(cityBlockWidth * 0.5, cityBlockWidth, true);
+//     buildingWidth = ~~(buildingWidth / 30) * 30;
+//     let buildingDepth = rand(cityBlockDepth * 0.5, cityBlockDepth, true);
+//     buildingDepth = ~~(buildingDepth / 30) * 30;
 
-    const building = new Building({ width: buildingWidth, height, depth: buildingDepth });
-    building.position.setX((cityBlockWidth - buildingWidth) * [-0.5, 0.5][rand(0, 1, true)]);
-    building.position.setZ((cityBlockDepth - buildingDepth) * [-0.5, 0.5][rand(0, 1, true)]);
-    building.position.y += curbHeight;
+//     const building = new Building({ width: buildingWidth, height, depth: buildingDepth });
+//     building.position.setX((cityBlockWidth - buildingWidth) * [-0.5, 0.5][rand(0, 1, true)]);
+//     building.position.setZ((cityBlockDepth - buildingDepth) * [-0.5, 0.5][rand(0, 1, true)]);
+//     building.position.y += curbHeight;
 
-    cityBlock.add(building);
-    buildings.push(building);
+//     cityBlock.add(building);
+//     buildings.push(building);
 
-    group.add(cityBlock);
-  });
-  world.scene.add(group);
-  return buildings;
-}
+//     group.add(cityBlock);
+//   });
+//   world.scene.add(group);
+//   return buildings;
+// }

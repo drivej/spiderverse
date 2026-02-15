@@ -31,13 +31,13 @@ function initSpiderverse() {
   const city = new City({ rows: 10, columns: 10 });
   world.scene.add(city);
 
-  const intersectables: THREE.Object3D[] = [plane, ...city.buildings];
+  const intersectables: THREE.Object3D[] = [plane, ...city.buildings, ...city.streets];
 
   const gravity = -Math.pow(9.82, 2);
   const globalForces = new THREE.Vector3(0, gravity, 0);
   const globalFriction = 0.99999;
 
-  const firstPersonObject = createSphere({ radius: 2, color: 0xff0000, position: [-80, 10, -10] });
+  const firstPersonObject = createSphere({ radius: 2, color: 0x0000ff, position: [-80, 10, -10] });
   firstPersonObject.geometry.computeBoundingSphere();
   world.scene.add(firstPersonObject);
 
@@ -47,10 +47,10 @@ function initSpiderverse() {
   const dummyRemoteRight = createSphere({ radius: 1, color: 0xff0000, position: [0, 0, 0] });
   firstPersonObject.add(dummyRemoteRight);
 
-  const cameraHit = createSphere({ radius: 5, color: 0x2266bb, position: [-80, 10, -10] });
+  const cameraHit = createSphere({ radius: 5, color: 0xcccccc, position: [-80, 10, -10] });
   world.scene.add(cameraHit);
 
-  const mouseHit = createSphere({ radius: 5, color: 0xff66bb, position: [-120, 10, -10] });
+  const mouseHit = createSphere({ radius: 5, color: 0xcccccc, position: [-120, 10, -10] });
   mouseHit.visible = false;
   world.scene.add(mouseHit);
 
@@ -88,14 +88,14 @@ function initSpiderverse() {
     if (intersection) {
       const spinner = e.ref.userData.webSpinner as WebSpinner;
       spinner.attachTo(intersection);
-      spinner.chain.visible = true;
+      // spinner.chain.visible = true;
       spinner.toObject.position.copy(intersection.point);
     }
   }
 
   function onSelectEnd(e: XRRemoteEvent) {
     (e.ref.userData.webSpinner as WebSpinner).detach();
-    (e.ref.userData.webSpinner as WebSpinner).chain.visible = false;
+    // (e.ref.userData.webSpinner as WebSpinner).chain.visible = false;
   }
 
   function onMove(e: XRRemoteEvent) {
@@ -302,6 +302,87 @@ function initSpiderverse() {
   };
 
   world.vrButton = VRButton.createButton(world.renderer);
+
+  //
+  //
+  //
+  // test
+
+
+  // webSpinnerLeft.position.set(10, 10, -20);
+  // webSpinnerRight.position.set(10, 10, 0);
+  // webSpinnerRight.toObject.material.color.set(0x0066ff);
+
+  // const chain = new Chain(11);
+  // // world.scene.add(chain);
+
+  // world.camera.position.z = -150;
+  // world.camera.position.x = -150;
+  // world.camera.lookAt(city.buildings[0].position);
+  // city.buildings[0].setOpacity(0.5);
+
+  // const center = { x: firstPersonObject.position.x, z: firstPersonObject.position.z };
+  // let jiggleIndex = 0;
+
+  // // const length = 2;
+  // // const linePoints = Array.from({ length }, () => new THREE.Vector3());
+
+  
+
+  // // const positions = [
+  // //   0, 0, 0,
+  // //   5, 5, 0,
+  // //   10, 0, 0
+  // // ];
+
+  // // const geometry = new LineGeometry().setPositions(positions);
+  // // geometry.setPositions(positions);
+
+  // // const material = new LineMaterial({color: 0xcccccc, linewidth: 5});
+
+  // // material.resolution.set(window.innerWidth, window.innerHeight);
+
+  // const thickLine = new Line2(new LineGeometry().setPositions([0,0,0,0,0,0]), new LineMaterial({color: 0xcccccc, linewidth: 5}));
+  // thickLine.material.resolution.set(window.innerWidth, window.innerHeight);
+  // world.scene.add(thickLine);
+
+  // // const line = new THREE.Line(new THREE.BufferGeometry().setFromPoints(linePoints), new THREE.LineBasicMaterial({ color: 0xff6600 }));
+  // // world.scene.add(line);
+
+  // setInterval(() => {
+  //   jiggleIndex += 0.1;
+  //   firstPersonObject.position.x = center.x + Math.sin(jiggleIndex) * 3;
+  //   firstPersonObject.position.z = center.z + Math.cos(jiggleIndex) * 3;
+  //   firstPersonObject.lookAt(city.buildings[0].position);
+
+  //   const fromPoint = firstPersonObject.position;
+  //   const toPoint = city.buildings[0].position;
+  //   const direction = new THREE.Vector3().subVectors(toPoint, fromPoint).normalize();
+  //   const raycaster = new THREE.Raycaster(fromPoint, direction);
+  //   const hits = raycaster.intersectObjects(intersectables, false);
+
+  //   // START: find position on surface of building where intersection occurs between firstPersonObject and city.buildings[0]
+  //   const inters = hits; //getIntersections(firstPersonObject, [city.buildings[0]]);
+  //   if (inters.length) {
+  //     chain.fromTo(firstPersonObject.position, inters[0].point);
+  //     thickLine.geometry.setFromPoints([firstPersonObject.position, inters[0].point]);
+
+  //   } else {
+  //     chain.fromTo(firstPersonObject.position, city.buildings[0].position);
+  //   }
+  // }, 50);
+  //
+  // lift city.buildings[0] off the ground a little.
+  // why does this not affect the position of the buildings? Write a comment explaining why this next line has no affect.
+  // city.buildings[0].position.y += 2;
+  // const intersections = getIntersections(dummyRemoteLeft, [city.buildings[0]]);
+  // webSpinnerLeft.attachTo(intersections[0]);
+  // webSpinnerLeft.position.x = 0;
+  // webSpinnerLeft.position.y = 20;
+  // webSpinnerLeft.position.z = 0;
+  //
+  //
+  //
 
   return world;
 }

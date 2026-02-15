@@ -1,10 +1,12 @@
 import { createSphere } from '@drivej/xrworld';
 import * as THREE from 'three';
-import { Chain } from './Chain';
+import { Line2 } from 'three/examples/jsm/lines/Line2.js';
+import { LineGeometry } from 'three/examples/jsm/lines/LineGeometry.js';
+import { LineMaterial } from 'three/examples/jsm/lines/LineMaterial.js';
 import { Moov, Moover } from './Moov';
 
 export class WebSpinner extends THREE.Group {
-  line: THREE.Line;
+  line: Line2;
   fromPoint = new THREE.Vector3();
   toPoint = new THREE.Vector3();
   currentPoint = new THREE.Vector3();
@@ -20,18 +22,18 @@ export class WebSpinner extends THREE.Group {
   fromObject: THREE.Mesh<THREE.SphereGeometry, THREE.MeshLambertMaterial>;
   toObject: THREE.Mesh<THREE.SphereGeometry, THREE.MeshLambertMaterial>;
   tween!: Moover;
-  chain: Chain;
   forceFactor = 1.3;
+  activeColor = 0x00ff00;
+  inactiveColor = 0x42f54b;
 
   constructor() {
     super();
-    this.line = new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(), new THREE.Vector3()]), new THREE.LineBasicMaterial({ color: 0xffcccc }));
-    this.fromObject = createSphere({ radius: 0.08, color: 0xcccccc, opacity: 0.5 });
-    this.toObject = createSphere({ radius: 0.5, color: 0x42f54b, position: [-50, 10, 30] });
-    this.chain = new Chain(200);
-    this.add(this.fromObject);
+    this.line = new Line2(new LineGeometry().setPositions([0, 0, 0, 0, 0, 0]), new LineMaterial({ color: 0xcccccc, linewidth: 5 }));
+    this.line.material.resolution.set(window.innerWidth, window.innerHeight);
+    this.fromObject = createSphere({ radius: 0.08, color: 0xcccccc, opacity: 0.5, position: [-50, 10, 30] });
+    this.toObject = createSphere({ radius: 0.5, color: 0xff6600, position: [-50, 9, 30] });
     this.add(this.toObject);
-    this.add(this.chain);
+    this.add(this.line);
   }
 
   attachTo(intersection: THREE.Intersection<THREE.Object3D<THREE.Event>>) {
@@ -50,13 +52,14 @@ export class WebSpinner extends THREE.Group {
 
     this.lerpValue = 0;
     const duration = this.attachDistance / this.speed;
+    this.line.geometry.setFromPoints([this.fromPoint, this.fromPoint]);
 
     this.tween = Moov.go({
       ease: Moov.ease.inExpo,
       duration,
       onUpdate: (val) => {
         this.currentPoint.lerpVectors(this.fromPoint, this.toPoint, val);
-        this.toObject.material.color.set(0xffffff * Math.random());
+        this.toObject.material.color.set(this.activeColor);
       },
       onComplete: () => {
         this.isAttached = true;
@@ -69,7 +72,7 @@ export class WebSpinner extends THREE.Group {
     this.isAttached = false;
     this.isActive = false;
     this.line.visible = false;
-    this.toObject.material.color.set(0x42f54b);
+    this.toObject.material.color.set(this.inactiveColor);
   }
 
   distance() {
@@ -78,7 +81,7 @@ export class WebSpinner extends THREE.Group {
 
   update() {
     if (this.isActive) {
-      this.chain.fromTo(this.fromPoint, this.currentPoint);
+      this.line.geometry.setFromPoints([this.fromPoint, this.currentPoint]);
     }
   }
 

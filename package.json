@@ -18,6 +18,8 @@
   "scripts": {
     "build": "vite build --config vite.config.build.ts && npm run build:types",
     "build:types": "tsc --project tsconfig.json --emitDeclarationOnly --outDir dist",
+    "build:watch": "vite build --config vite.config.build.ts --watch",
+    "dev": "npm run build:watch & (cd test-app && npm run dev)",
     "prepublishOnly": "npm run build",
     "test": "cd test-app && npm run dev",
     "test:install": "cd test-app && npm install"

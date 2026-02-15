@@ -133,4 +133,34 @@ export class Building extends THREE.Mesh<THREE.BoxGeometry, THREE.Material[]> {
   containsPoint(point: THREE.Vector3) {
     this.geometry.boundingBox!.containsPoint(point);
   }
+
+  setOpacity(opacity: number) {
+    // Fade this building (it uses Material[])
+    const mats = Array.isArray(this.material) ? this.material : [this.material];
+
+    mats.forEach((mat) => {
+      if (mat instanceof THREE.Material) {
+        mat.transparent = opacity < 1; // only enable when needed
+        (mat as any).opacity = opacity; // MeshStandardMaterial supports this
+        mat.depthWrite = opacity === 1; // helps with sorting artifacts
+        mat.needsUpdate = true;
+      }
+    });
+
+    // Fade children (edges)
+    this.traverse((obj) => {
+      if (obj instanceof THREE.Mesh) {
+        const childMats = Array.isArray(obj.material) ? obj.material : [obj.material];
+
+        childMats.forEach((m) => {
+          if (m instanceof THREE.Material) {
+            m.transparent = opacity < 1;
+            (m as any).opacity = opacity;
+            m.depthWrite = opacity === 1;
+            m.needsUpdate = true;
+          }
+        });
+      }
+    });
+  }
 }
