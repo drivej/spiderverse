@@ -1,9 +1,10 @@
-import { createInfiniteColorPlane, createSphere, KeyboardKeys, KeyController, MouseController, VRButton, XRRemote, XRRemoteEvent, XRRemoteEventType, XRWorld } from '@drivej/xrworld';
+import { clamp, createInfiniteColorPlane, createSphere, KeyboardKeys, KeyController, MouseController, VRButton, XRRemote, XRRemoteEvent, XRRemoteEventType, XRWorld } from '@drivej/xrworld';
 import gsap from 'gsap';
 import * as THREE from 'three';
 import { City } from './generateCity';
 import { Moov } from './Moov';
 import { Sunrise } from './Sunrise';
+import { VRTextSprite } from './VRTextSprite';
 import { WebSpinner } from './WebSpinner';
 
 function initSpiderverse() {
@@ -16,6 +17,9 @@ function initSpiderverse() {
   world.renderer.xr.addEventListener('sessionstart', () => {
     firstPerson = world.dolly;
   });
+
+  const log = new VRTextSprite();
+  world.camera.add(log);
 
   world.renderer.shadowMap.enabled = true;
 
@@ -99,6 +103,7 @@ function initSpiderverse() {
   }
 
   function onMove(e: XRRemoteEvent) {
+    updatePullForces();
     if (!(e.ref.userData.webSpinner as WebSpinner).isActive) {
       const intersection = getWebIntersection(e.ref.controller);
       if (intersection) {
@@ -209,6 +214,67 @@ function initSpiderverse() {
     }
   }
 
+  const minDistance = 0.25;
+  const maxDistance = 0.65;
+  const rangeDistance = maxDistance - minDistance;
+  const minElasticity = 0.0001;
+  const maxElasticity = 1;
+  const rangeElasticity = maxElasticity - minElasticity;
+
+  function updateSpinnerForces(spinner: WebSpinner, target: THREE.Vector3) {
+    const d = spinner.fromPoint.distanceTo(target);
+    const p = clamp((d - minDistance) / rangeDistance, 0, 1);
+    spinner.elasticity = minElasticity + rangeElasticity * p;
+  }
+
+  function updatePullForces() {
+    // const q2 = world.rightController.controller.position;
+
+    const target = new THREE.Vector3();
+    target.setFromMatrixPosition(world.camera.matrixWorld);
+
+    if (webSpinnerLeft.isAttached) {
+      updateSpinnerForces(webSpinnerLeft, target);
+    }
+
+    if (webSpinnerRight.isAttached) {
+      updateSpinnerForces(webSpinnerRight, target);
+    }
+
+    // const d1 = webSpinnerLeft.fromPoint.distanceTo(target);
+    // const d2 = webSpinnerRight.fromPoint.distanceTo(target);
+
+    // const minDistance = .25;
+    // const maxDistance = .65;
+    // const rangeDistance = maxDistance - minDistance;
+    // const p1 = clamp((d1 - minDistance) / rangeDistance, 0, 1);
+    // const p2 = clamp((d2 - minDistance) / rangeDistance, 0, 1);
+
+    //const minForceFactor = 1.3;
+    //const maxForceFactor = 1.5;
+    //const rangeForceFactor = maxForceFactor - minForceFactor;
+    // webSpinnerLeft.forceFactor = minForceFactor + rangeForceFactor * p1;
+    // webSpinnerRight.forceFactor = minForceFactor + rangeForceFactor * p2;
+
+    // 0.05
+    // const minElasticity = 0.001;
+    // const maxElasticity = 1;
+    // const rangeElasticity = maxElasticity - minElasticity;
+    // webSpinnerLeft.elasticity = minElasticity + rangeElasticity * p1;
+    // webSpinnerRight.elasticity = minElasticity + rangeElasticity * p2;
+
+    // const n = ~~(Math.random() * 10);
+    //log.setText(`L:${d1.toFixed(2)} ${p1.toFixed(2)} ${webSpinnerLeft.elasticity.toFixed(2)} | R:${d2.toFixed(2)} ${p2.toFixed(2)} ${webSpinnerRight.elasticity.toFixed(2)}`);
+    // log.setText(`${n} L:${p1.toFixed(2)} ${webSpinnerLeft.elasticity.toFixed(2)} ${webSpinnerLeft.forceFactor.toFixed(2)} | R: ${p2.toFixed(2)} ${webSpinnerRight.elasticity.toFixed(2)} ${webSpinnerRight.forceFactor.toFixed(2)}`);
+    // log.setText(`${d1.toFixed(2)} ${p1.toFixed(2)}:${d2.toFixed(2)} ${p2.toFixed(2)}`);
+    // log.position.set(0, 0, -1);
+
+    // if (webSpinnerLeft.isAttached) {
+    // get distance from firstPerson to each grip
+    // console.log(distance);
+    // }
+  }
+
   const vectorTick: THREE.Vector3 = new THREE.Vector3();
   const hitBuffer = 2;
 
@@ -292,6 +358,7 @@ function initSpiderverse() {
     if (firstPerson.position.y < 2) {
       firstPerson.position.y = 2;
     }
+
     updateWebSpinnerFromPoint(world.leftController);
     updateWebSpinnerFromPoint(world.rightController);
 
@@ -307,7 +374,6 @@ function initSpiderverse() {
   //
   //
   // test
-
 
   // webSpinnerLeft.position.set(10, 10, -20);
   // webSpinnerRight.position.set(10, 10, 0);
@@ -326,8 +392,6 @@ function initSpiderverse() {
 
   // // const length = 2;
   // // const linePoints = Array.from({ length }, () => new THREE.Vector3());
-
-  
 
   // // const positions = [
   // //   0, 0, 0,

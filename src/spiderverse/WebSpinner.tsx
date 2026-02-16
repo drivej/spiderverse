@@ -22,7 +22,7 @@ export class WebSpinner extends THREE.Group {
   fromObject: THREE.Mesh<THREE.SphereGeometry, THREE.MeshLambertMaterial>;
   toObject: THREE.Mesh<THREE.SphereGeometry, THREE.MeshLambertMaterial>;
   tween!: Moover;
-  forceFactor = 1.3;
+  forceFactor = 2.3;
   activeColor = 0x00ff00;
   inactiveColor = 0x42f54b;
 
@@ -87,6 +87,7 @@ export class WebSpinner extends THREE.Group {
 
   getVector() {
     if (this.isAttached) {
+      this.staticLength = this.attachDistance * this.elasticity;
       this.vector.subVectors(this.toPoint, this.fromPoint);
       const e = this.vector.length() - this.staticLength;
       this.vector.normalize().multiplyScalar(e * this.forceFactor);
