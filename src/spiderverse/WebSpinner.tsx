@@ -25,6 +25,7 @@ export class WebSpinner extends THREE.Group {
   forceFactor = 2.3;
   activeColor = 0x00ff00;
   inactiveColor = 0x42f54b;
+  intersection: THREE.Intersection<THREE.Object3D<THREE.Event>> | null = null;
 
   constructor() {
     super();
@@ -49,6 +50,7 @@ export class WebSpinner extends THREE.Group {
     this.isActive = true;
     this.line.visible = true;
     this.toObject.material.color.set(0xf542f2);
+    this.intersection = intersection;
 
     this.lerpValue = 0;
     const duration = this.attachDistance / this.speed;

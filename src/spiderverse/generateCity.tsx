@@ -35,6 +35,7 @@ export function createCityStreets(grid: Grid<any>) {
   const geo = new THREE.BoxGeometry(grid.width, 1, grid.height);
   // right, left, top, bottom, front, back
   const mesh = new THREE.Mesh(geo, [sideMaterial, sideMaterial, material, sideMaterial, sideMaterial, sideMaterial]);
+  mesh.name = 'street';
   return mesh;
 }
 

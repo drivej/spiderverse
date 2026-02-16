@@ -1,4 +1,4 @@
-import { clamp, createInfiniteColorPlane, createSphere, KeyboardKeys, KeyController, MouseController, VRButton, XRRemote, XRRemoteEvent, XRRemoteEventType, XRWorld } from '@drivej/xrworld';
+import { clamp, createInfiniteColorPlane, createSphere, KeyboardControllerPayload, KeyboardKeys, KeyController, MouseController, VRButton, XRHand, XRRemote, XRRemoteEvent, XRRemoteEventType, XRWorld } from '@drivej/xrworld';
 import gsap from 'gsap';
 import * as THREE from 'three';
 import { City } from './generateCity';
@@ -15,15 +15,19 @@ function initSpiderverse() {
   world.initOrbitControls();
 
   world.renderer.xr.addEventListener('sessionstart', () => {
+    killMouse();
     firstPerson = world.dolly;
   });
 
   const log = new VRTextSprite();
   world.camera.add(log);
+  log.position.set(0, 0, -1);
+  log.setText('hello');
 
   world.renderer.shadowMap.enabled = true;
 
   const plane = createInfiniteColorPlane({ color: 0xbbbbbb });
+  plane.name = 'plane';
   // plane.receiveShadow = true;
   world.scene.add(plane);
 
@@ -53,10 +57,6 @@ function initSpiderverse() {
 
   const cameraHit = createSphere({ radius: 5, color: 0xcccccc, position: [-80, 10, -10] });
   world.scene.add(cameraHit);
-
-  const mouseHit = createSphere({ radius: 5, color: 0xcccccc, position: [-120, 10, -10] });
-  mouseHit.visible = false;
-  world.scene.add(mouseHit);
 
   const webSpinnerLeft = new WebSpinner();
   world.scene.add(webSpinnerLeft);
@@ -104,10 +104,12 @@ function initSpiderverse() {
 
   function onMove(e: XRRemoteEvent) {
     updatePullForces();
-    if (!(e.ref.userData.webSpinner as WebSpinner).isActive) {
+    const spinner = e.ref.userData.webSpinner as WebSpinner;
+    if (!spinner.isActive) {
       const intersection = getWebIntersection(e.ref.controller);
       if (intersection) {
-        (e.ref.userData.webSpinner as WebSpinner).toObject.position.copy(intersection.point);
+        spinner.toObject.position.copy(intersection.point);
+        spinner.intersection = intersection;
       }
     }
   }
@@ -132,57 +134,80 @@ function initSpiderverse() {
   world.leftController.on(XRRemoteEventType.SELECT_START, onSelectStart);
   world.leftController.on(XRRemoteEventType.MOVE, onMove);
   world.leftController.on(XRRemoteEventType.SELECT_END, onSelectEnd);
-
-  // mouse for browser testing
-
+  //
+  // START: browser testing
+  //
   let currentSpinner = webSpinnerRight;
+  let mouseHit: THREE.Mesh;
 
-  const mouse = new MouseController(world.renderer.domElement)
-    .onClick((_e) => {
-      // currentSpinner = currentSpinner === leftSpinner ? rightSpinner : leftSpinner;
-      currentSpinner = currentSpinner === webSpinnerRight ? webSpinnerLeft : webSpinnerRight;
-      raycaster.setFromCamera(mouse.relative, world.camera);
-      const intersections = raycaster.intersectObjects(intersectables, false);
-      if (intersections.length > 0) {
-        const intersection = intersections[0];
-        currentSpinner.toPoint.copy(intersection.point);
-        currentSpinner.toObject.position.copy(intersection.point);
-        // attachWeb(currentSpinner, intersection);
-        currentSpinner.attachTo(intersection);
-      }
-    })
-    .onMove((_e) => {
-      raycaster.setFromCamera(mouse.relative, world.camera);
-      const intersections = raycaster.intersectObjects(intersectables, true);
-      if (intersections.length > 0) {
-        const intersection = intersections[0];
-        // currentSpinner.toObject.position.copy(intersection.point);
-        mouseHit.position.copy(intersection.point);
-      }
-    });
+  function onMouseClick(e: { mouse: MouseController }) {
+    currentSpinner = currentSpinner === webSpinnerRight ? webSpinnerLeft : webSpinnerRight;
+    raycaster.setFromCamera(e.mouse.relative, world.camera);
+    const intersections = raycaster.intersectObjects(intersectables, false);
+    if (intersections.length > 0) {
+      const intersection = intersections[0];
+      currentSpinner.toPoint.copy(intersection.point);
+      currentSpinner.toObject.position.copy(intersection.point);
+      currentSpinner.attachTo(intersection);
+    }
+  }
 
-  const keyboard = new KeyController();
+  function onMouseMove(e: { mouse: MouseController }) {
+    raycaster.setFromCamera(e.mouse.relative, world.camera);
+    const intersections = raycaster.intersectObjects(intersectables, false);
+    if (intersections.length > 0) {
+      const intersection = intersections[0];
+      mouseHit.position.copy(intersection.point);
+    }
+  }
 
-  keyboard
-    .onPress(' ', (_e) => {
-      firstPersonVector.add(new THREE.Vector3(0, 20, 0));
-    })
-    .onPress(KeyboardKeys.ArrowUp, () => {
-      firstPersonVector.add(new THREE.Vector3(0, 0, -20));
-    })
-    .onPress(KeyboardKeys.ArrowDown, () => {
-      firstPersonVector.add(new THREE.Vector3(0, 0, 20));
-    })
-    .onPress(KeyboardKeys.ArrowLeft, () => {
-      firstPersonVector.add(new THREE.Vector3(-20, 0, 0));
-    })
-    .onPress(KeyboardKeys.ArrowRight, () => {
-      firstPersonVector.add(new THREE.Vector3(20, 0, 0));
-    })
-    .onPress('i', (_e) => {
-      console.log('firstPersonVector', firstPersonVector.toArray());
-      console.log('firstPerson.position', firstPerson.position.toArray());
-    });
+  function handleKeyPress(e: KeyboardControllerPayload) {
+    switch (e.key) {
+      case ' ':
+        firstPersonVector.add(new THREE.Vector3(0, 20, 0));
+        break;
+
+      case KeyboardKeys.ArrowUp:
+        firstPersonVector.add(new THREE.Vector3(0, 0, -20));
+        break;
+      case KeyboardKeys.ArrowDown:
+        firstPersonVector.add(new THREE.Vector3(0, 0, 20));
+        break;
+      case KeyboardKeys.ArrowLeft:
+        firstPersonVector.add(new THREE.Vector3(-20, 0, 0));
+        break;
+      case KeyboardKeys.ArrowRight:
+        firstPersonVector.add(new THREE.Vector3(20, 0, 0));
+        break;
+      case 'i':
+        console.log('firstPersonVector', firstPersonVector.toArray());
+        console.log('firstPerson.position', firstPerson.position.toArray());
+    }
+  }
+
+  function dummyMouseEvent() {}
+
+  function initNonVR() {
+    mouseHit = createSphere({ radius: 1, color: 0xff6600, position: [-120, 10, -10] });
+    world.scene.add(mouseHit);
+
+    const mouse = new MouseController(world.renderer.domElement).onClick(onMouseClick).onDown(dummyMouseEvent).onUp(dummyMouseEvent).onMove(onMouseMove);
+    const keyboard = new KeyController().on('down', handleKeyPress);
+    const kill = () => {
+      keyboard.off('down');
+      mouse.off('down');
+      mouse.off('up');
+      mouse.off('move');
+      world.scene.remove(mouseHit);
+    };
+
+    return kill;
+  }
+
+  const killMouse = initNonVR();
+  //
+  // END: browser testing
+  //
 
   // Hit Test on Buildings
 
@@ -199,20 +224,20 @@ function initSpiderverse() {
     return { hit: false };
   }
 
-  function checkCamera() {
-    world.dummyCam.getWorldPosition(raycaster.ray.origin);
-    // raycaster.ray.origin.copy(world.dummyCam.getWorldPosition());
-    world.dummyCam.getWorldDirection(raycaster.ray.direction);
-    // raycaster.ray.direction.applyQuaternion(world.dummyCam.quaternion).add(world.dummyCam.position);
-    const intersections = raycaster.intersectObjects(intersectables, false);
-    if (intersections.length > 0) {
-      // const intersection = intersections[0];
-      cameraHit.material.color.set(0x00ff33);
-      // cameraHit.position.copy(intersection.point);
-    } else {
-      cameraHit.material.color.set(0x003333);
-    }
-  }
+  // function checkCamera() {
+  // world.dummyCam.getWorldPosition(raycaster.ray.origin);
+  // // raycaster.ray.origin.copy(world.dummyCam.getWorldPosition());
+  // world.dummyCam.getWorldDirection(raycaster.ray.direction);
+  // // raycaster.ray.direction.applyQuaternion(world.dummyCam.quaternion).add(world.dummyCam.position);
+  // const intersections = raycaster.intersectObjects(intersectables, false);
+  // if (intersections.length > 0) {
+  //   // const intersection = intersections[0];
+  //   cameraHit.material.color.set(0x00ff33);
+  //   // cameraHit.position.copy(intersection.point);
+  // } else {
+  //   cameraHit.material.color.set(0x003333);
+  // }
+  // }
 
   const minDistance = 0.25;
   const maxDistance = 0.65;
@@ -228,59 +253,44 @@ function initSpiderverse() {
   }
 
   function updatePullForces() {
-    // const q2 = world.rightController.controller.position;
+    if (webSpinnerLeft.isAttached || webSpinnerRight.isAttached) {
+      const target = new THREE.Vector3();
+      target.setFromMatrixPosition(world.camera.matrixWorld);
 
-    const target = new THREE.Vector3();
-    target.setFromMatrixPosition(world.camera.matrixWorld);
+      if (webSpinnerLeft.isAttached) {
+        updateSpinnerForces(webSpinnerLeft, target);
+      }
 
-    if (webSpinnerLeft.isAttached) {
-      updateSpinnerForces(webSpinnerLeft, target);
+      if (webSpinnerRight.isAttached) {
+        updateSpinnerForces(webSpinnerRight, target);
+      }
     }
+  }
 
-    if (webSpinnerRight.isAttached) {
-      updateSpinnerForces(webSpinnerRight, target);
-    }
-
-    // const d1 = webSpinnerLeft.fromPoint.distanceTo(target);
-    // const d2 = webSpinnerRight.fromPoint.distanceTo(target);
-
-    // const minDistance = .25;
-    // const maxDistance = .65;
-    // const rangeDistance = maxDistance - minDistance;
-    // const p1 = clamp((d1 - minDistance) / rangeDistance, 0, 1);
-    // const p2 = clamp((d2 - minDistance) / rangeDistance, 0, 1);
-
-    //const minForceFactor = 1.3;
-    //const maxForceFactor = 1.5;
-    //const rangeForceFactor = maxForceFactor - minForceFactor;
-    // webSpinnerLeft.forceFactor = minForceFactor + rangeForceFactor * p1;
-    // webSpinnerRight.forceFactor = minForceFactor + rangeForceFactor * p2;
-
-    // 0.05
-    // const minElasticity = 0.001;
-    // const maxElasticity = 1;
-    // const rangeElasticity = maxElasticity - minElasticity;
-    // webSpinnerLeft.elasticity = minElasticity + rangeElasticity * p1;
-    // webSpinnerRight.elasticity = minElasticity + rangeElasticity * p2;
-
-    // const n = ~~(Math.random() * 10);
-    //log.setText(`L:${d1.toFixed(2)} ${p1.toFixed(2)} ${webSpinnerLeft.elasticity.toFixed(2)} | R:${d2.toFixed(2)} ${p2.toFixed(2)} ${webSpinnerRight.elasticity.toFixed(2)}`);
-    // log.setText(`${n} L:${p1.toFixed(2)} ${webSpinnerLeft.elasticity.toFixed(2)} ${webSpinnerLeft.forceFactor.toFixed(2)} | R: ${p2.toFixed(2)} ${webSpinnerRight.elasticity.toFixed(2)} ${webSpinnerRight.forceFactor.toFixed(2)}`);
-    // log.setText(`${d1.toFixed(2)} ${p1.toFixed(2)}:${d2.toFixed(2)} ${p2.toFixed(2)}`);
-    // log.position.set(0, 0, -1);
-
-    // if (webSpinnerLeft.isAttached) {
-    // get distance from firstPerson to each grip
-    // console.log(distance);
-    // }
+  function updateHandVelocity(remote: XRRemote, hand: XRHand, delta: number) {
+    //     const remote = world.leftController;
+    // const hand = world.leftHand;
+    // remote.grip.getWorldPosition(tmpVector);
+    tmpVector.copy(remote.grip.position);
+    hand.moveVector.subVectors(tmpVector, hand.lastPosition).divideScalar(delta);
+    hand.lastPosition.copy(tmpVector);
   }
 
   const vectorTick: THREE.Vector3 = new THREE.Vector3();
   const hitBuffer = 2;
 
+  // const h = new XRHand(1, world.renderer, world.dolly);
+
+  // world.rightHand.onMove = (info) => {
+  //   const v1 = info.vector;
+  //   log.setText(`v: ${v1?.length?.() ?? -1}`);
+  // };
+
+  const speeds: number[] = [];
+
   world.beforeRender = (delta) => {
     gsap.ticker.tick();
-    checkCamera();
+    // checkCamera();
     // align web spinners with remote position
     updateWebSpinnerFromPoint(world.leftController);
     updateWebSpinnerFromPoint(world.rightController);
@@ -302,50 +312,102 @@ function initSpiderverse() {
     firstPersonVector.add(globalForcesTick);
     firstPersonVector.multiplyScalar(globalFrictionTick);
 
+    const hitTest = willHitObstacle(firstPerson.position, vectorTick, intersectables, hitBuffer);
+    const hitStreetL = webSpinnerLeft.intersection?.object?.name === 'street';
+    const hitStreetR = webSpinnerRight.intersection?.object?.name === 'street';
+    const hitStreet = hitStreetL && hitStreetR && world.camera.position.y < 2;
+
+    log.setText(hitStreet ? 'hitStreet' : '');
+
+    if (world.VRSessionActive) {
+      if (hitStreet) {
+        // make first person move along ground in direction of camera at the speed of the remote movement.
+        updateHandVelocity(world.leftController, world.leftHand, delta);
+        updateHandVelocity(world.rightController, world.rightHand, delta);
+
+        const leftSpeed = world.leftHand.moveVector.length();
+        const rightSpeed = world.rightHand.moveVector.length();
+        const totalSpeed = leftSpeed + rightSpeed;
+        speeds.push(totalSpeed);
+        if (speeds.length > 20) speeds.shift();
+        const avgSpeed = speeds.reduce((s, n) => s + n, 0) / speeds.length;
+
+        // Increase speed based on arm pumping intensity
+        // The avgSpeed represents how much you're pumping your arms
+        // const pumpingIntensity = avgSpeed * 100; // Scale factor
+        // currentSpeed += pumpingIntensity * delta; // Accelerate based on pumping
+
+        // Apply friction/decay so you slow down when you stop pumping
+        // currentSpeed *= Math.pow(0.95, delta * 60); // Decay over time
+
+        // Clamp max speed
+        // currentSpeed = Math.min(currentSpeed, 50);
+
+        // tmpMatrix.identity().extractRotation(world.camera.matrixWorld);
+        world.camera.getWorldDirection(tmpVector);
+        tmpVector.y = 0; // Keep movement on horizontal plane
+        //if (tmpVector.lengthSq() > 0 && avgSpeed > 0.1) {
+        tmpVector.normalize(); // Get direction unit vector
+        tmpVector.setLength(avgSpeed);
+        // firstPerson.position.add(tmpVector);
+        // firstPersonVector.add(tmpVector);
+        // firstPersonVector.addScaledVector(tmpVector, avgSpeed); // Add continuous forward movement
+        // }
+
+        ///log.setText(`${world.camera.position.y.toFixed(1)} L: ${leftSpeed.toFixed(1)} R: ${rightSpeed.toFixed(1)} avg: ${avgSpeed.toFixed(1)} spd: ${currentSpeed.toFixed(1)}`);
+      } else {
+        //log.setText('--');
+      }
+    }
+
     vectorTick.copy(firstPersonVector).multiplyScalar(delta);
 
-    // const hitTest = willHitObstacle(vectorTick);
-    const hitTest = willHitObstacle(firstPerson.position, vectorTick, intersectables, hitBuffer);
-
     if (hitTest && hitTest.hit === true) {
-      const method = 0;
+      // const method = 0;
       // method 1
-      if (method < 1) {
+      // if (method < 1) {
+      if (!hitStreet) {
         vectorTick.reflect(hitTest.intersection!.face!.normal).multiplyScalar(0.5);
         firstPersonVector.reflect(hitTest.intersection!.face!.normal).multiplyScalar(0.5);
-      } else if (method > 1) {
-        // place at hit position
-        // TODO: advance the position along the reflected ray
-        // const d = hitTest.intersection.distance - vectorTick.length();
-        const b = hitBuffer - hitTest.intersection!.distance;
-        const a = vectorTick.length() - b;
-        vectorTick.normalize().multiplyScalar(a);
-        // const a = firstPerson.position.clone().add(firstPerson.position.clone().normalize().multiplyScalar(x));
-        // firstPerson.position.copy(a);
-        // const a = (vectorTick.length() + hitTest.intersection.distance) - hitBuffer;
-        // const b = hitBuffer - hitTest.intersection.distance;
-        // vectorTick.normalize();
-        // firstPersonHit.position.copy(hitTest.intersection.point);
-        vectorTick.reflect(hitTest.intersection!.face!.normal); //.multiplyScalar(0.5);
-        firstPersonVector.reflect(hitTest.intersection!.face!.normal); //.multiplyScalar(0.5);
-        // firstPerson.position.copy(a);
-        // vectorTick.normalize().multiplyScalar(b);
-        firstPersonVector.multiplyScalar(0.01);
       }
+      // } else if (method > 1) {
+      //   // place at hit position
+      //   // TODO: advance the position along the reflected ray
+      //   // const d = hitTest.intersection.distance - vectorTick.length();
+      //   const b = hitBuffer - hitTest.intersection!.distance;
+      //   const a = vectorTick.length() - b;
+      //   vectorTick.normalize().multiplyScalar(a);
+      //   // const a = firstPerson.position.clone().add(firstPerson.position.clone().normalize().multiplyScalar(x));
+      //   // firstPerson.position.copy(a);
+      //   // const a = (vectorTick.length() + hitTest.intersection.distance) - hitBuffer;
+      //   // const b = hitBuffer - hitTest.intersection.distance;
+      //   // vectorTick.normalize();
+      //   // firstPersonHit.position.copy(hitTest.intersection.point);
+      //   vectorTick.reflect(hitTest.intersection!.face!.normal); //.multiplyScalar(0.5);
+      //   firstPersonVector.reflect(hitTest.intersection!.face!.normal); //.multiplyScalar(0.5);
+      //   // firstPerson.position.copy(a);
+      //   // vectorTick.normalize().multiplyScalar(b);
+      //   if (hitStreet) {
+      //     // firstPersonVector.multiplyScalar(0.5);
+      //   } else {
+      //     firstPersonVector.multiplyScalar(0.01);
+      //   }
+      // }
+
+      // const v1 = world.leftController.moveVector;
+      // console.log(h.constructor.name, h instanceof XRHand, h.getLinearVelocity)
+      // let v1 = { length: () => -1 };
+
+      // const current = new THREE.Vector3(); //.copy(world.leftHand.controller.position);
+      // world.leftHand.controller.position;
+      // const remote = world.leftController;
+      // remote.grip.getWorldPosition(current);
 
       // console.log(d);
       // firstPersonVector.normalize().multiplyScalar(vectorTick.length() - hitTest.intersection.distance);
       // firstPerson.position.copy(hitTest.intersection.point);
       // bounce off surface
     }
-
-    // set tmpVector to future position
-    // tmpVector.copy(firstPerson.position).add(vectorTick); // next position
-
-    // detect ground hit
-    // if (tmpVector.y < 2) {
-    //   firstPersonVector.multiply(new THREE.Vector3(1, -0.5, 1));
-    // }
 
     firstPerson.position.add(vectorTick);
 
