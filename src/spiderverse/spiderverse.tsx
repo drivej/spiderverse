@@ -20,9 +20,8 @@ function initSpiderverse() {
   });
 
   const log = new VRTextSprite();
-  world.camera.add(log);
   log.position.set(0, 0, -1);
-  log.setText('hello');
+  world.camera.add(log);
 
   world.renderer.shadowMap.enabled = true;
 
@@ -267,26 +266,72 @@ function initSpiderverse() {
     }
   }
 
+  const lastCameraPosition = new THREE.Vector3();
+  const cameraVelocity = new THREE.Vector3();
+  // const XheadQuat = new THREE.Quaternion();
+  // const XinvHeadQuat = new THREE.Quaternion();
+  // const velocityHead = new THREE.Vector3();
+
+  function XupdateCameraVelocity() {
+    cameraVelocity.subVectors(world.camera.position, lastCameraPosition);
+    lastCameraPosition.copy(world.camera.position);
+    // get XR camera (actual headset pose)
+    const xrCam = world.renderer.xr.getCamera();
+    // headset rotation
+    xrCam.getWorldQuaternion(headQuat);
+    // inverse rotation
+    invHeadQuat.copy(headQuat).invert();
+    // velocityHead.copy(controllerVelocity).applyQuaternion(invHeadQuat);
+  }
+
+  const lastHeadPos = new THREE.Vector3();
+  const headPos = new THREE.Vector3();
+  const headVelWorld = new THREE.Vector3();
+
+  const headQuat = new THREE.Quaternion();
+  const invHeadQuat = new THREE.Quaternion();
+
+  function updateCameraVelocity(delta: number) {
+    // XR camera is the actual headset pose during VR
+    const xrCam = world.renderer.xr.getCamera();
+
+    xrCam.getWorldPosition(headPos);
+    headVelWorld.subVectors(headPos, lastHeadPos).divideScalar(delta);
+    lastHeadPos.copy(headPos);
+
+    xrCam.getWorldQuaternion(headQuat);
+    invHeadQuat.copy(headQuat).invert();
+  }
+
   function updateHandVelocity(remote: XRRemote, hand: XRHand, delta: number) {
-    //     const remote = world.leftController;
-    // const hand = world.leftHand;
     // remote.grip.getWorldPosition(tmpVector);
-    tmpVector.copy(remote.grip.position);
+    // tmpVector.copy(remote.grip.position);
+    tmpVector.subVectors(remote.grip.position, world.camera.position);
     hand.moveVector.subVectors(tmpVector, hand.lastPosition).divideScalar(delta);
     hand.lastPosition.copy(tmpVector);
   }
 
   const vectorTick: THREE.Vector3 = new THREE.Vector3();
   const hitBuffer = 2;
+  // const speeds: number[] = [];
+  let runSpeed = 0;
+  const runScale = 1;
+  const runDecay = 0.95;
 
-  // const h = new XRHand(1, world.renderer, world.dolly);
+  function test() {
+    const leftVelRel = new THREE.Vector3();
+    const rightVelRel = new THREE.Vector3();
+    leftVelRel.copy(world.leftHand.moveVector).sub(headVelWorld).applyQuaternion(invHeadQuat);
+    rightVelRel.copy(world.rightHand.moveVector).sub(headVelWorld).applyQuaternion(invHeadQuat);
 
-  // world.rightHand.onMove = (info) => {
-  //   const v1 = info.vector;
-  //   log.setText(`v: ${v1?.length?.() ?? -1}`);
-  // };
+    // const leftSpeed = leftVelRel.length();
+    // const rightSpeed = rightVelRel.length();
+    const leftSpeed = world.leftHand.moveVector.length();
+    const rightSpeed = world.rightHand.moveVector.length();
 
-  const speeds: number[] = [];
+    log.setText(`q ${leftSpeed.toFixed(3)}:${rightSpeed.toFixed(3)}`);
+    log.setText(`q ${leftSpeed.toFixed(3)}:${rightSpeed.toFixed(3)}`);
+  }
 
   world.beforeRender = (delta) => {
     gsap.ticker.tick();
@@ -313,52 +358,104 @@ function initSpiderverse() {
     firstPersonVector.multiplyScalar(globalFrictionTick);
 
     const hitTest = willHitObstacle(firstPerson.position, vectorTick, intersectables, hitBuffer);
-    const hitStreetL = webSpinnerLeft.intersection?.object?.name === 'street';
-    const hitStreetR = webSpinnerRight.intersection?.object?.name === 'street';
-    const hitStreet = hitStreetL && hitStreetR && world.camera.position.y < 2;
 
-    log.setText(hitStreet ? 'hitStreet' : '');
+    const objLeft = webSpinnerLeft.intersection?.object;
+    const objRight = webSpinnerRight.intersection?.object;
+    const isSameObj = objLeft && objRight && objLeft === objRight;
+    const hitLeftRun = isSameObj && objLeft?.userData.runnable;
+    const hitRightRun = isSameObj && objRight?.userData.runnable;
+    const isNear = webSpinnerLeft.intersection?.distance ?? (10 < 6 && webSpinnerRight.intersection?.distance) ?? 10 < 6;
+    const hitStreet = isSameObj && isNear && hitLeftRun && hitRightRun;
 
-    if (world.VRSessionActive) {
-      if (hitStreet) {
-        // make first person move along ground in direction of camera at the speed of the remote movement.
-        updateHandVelocity(world.leftController, world.leftHand, delta);
-        updateHandVelocity(world.rightController, world.rightHand, delta);
+    const fwd = new THREE.Vector3();
+    const velHead = new THREE.Vector3();
 
-        const leftSpeed = world.leftHand.moveVector.length();
-        const rightSpeed = world.rightHand.moveVector.length();
-        const totalSpeed = leftSpeed + rightSpeed;
-        speeds.push(totalSpeed);
-        if (speeds.length > 20) speeds.shift();
-        const avgSpeed = speeds.reduce((s, n) => s + n, 0) / speeds.length;
+    const leftVelRel = new THREE.Vector3();
+    const rightVelRel = new THREE.Vector3();
 
-        // Increase speed based on arm pumping intensity
-        // The avgSpeed represents how much you're pumping your arms
-        // const pumpingIntensity = avgSpeed * 100; // Scale factor
-        // currentSpeed += pumpingIntensity * delta; // Accelerate based on pumping
+    // test();
 
-        // Apply friction/decay so you slow down when you stop pumping
-        // currentSpeed *= Math.pow(0.95, delta * 60); // Decay over time
+    if (world.VRSessionActive && hitStreet) {
+      updateCameraVelocity(delta);
+      updateHandVelocity(world.leftController, world.leftHand, delta);
+      updateHandVelocity(world.rightController, world.rightHand, delta);
 
-        // Clamp max speed
-        // currentSpeed = Math.min(currentSpeed, 50);
+      // find relative movement
+      // const leftSpeed = velocityHead.copy(world.leftController.moveVector).applyQuaternion(invHeadQuat).length() * 10;
+      // const rightSpeed = velocityHead.copy(world.rightController.moveVector).applyQuaternion(invHeadQuat).length() * 10;
 
-        // tmpMatrix.identity().extractRotation(world.camera.matrixWorld);
-        world.camera.getWorldDirection(tmpVector);
-        tmpVector.y = 0; // Keep movement on horizontal plane
-        //if (tmpVector.lengthSq() > 0 && avgSpeed > 0.1) {
-        tmpVector.normalize(); // Get direction unit vector
-        tmpVector.setLength(avgSpeed);
-        // firstPerson.position.add(tmpVector);
-        // firstPersonVector.add(tmpVector);
-        // firstPersonVector.addScaledVector(tmpVector, avgSpeed); // Add continuous forward movement
-        // }
+      leftVelRel.copy(world.leftHand.moveVector).sub(headVelWorld).applyQuaternion(invHeadQuat);
+      rightVelRel.copy(world.rightHand.moveVector).sub(headVelWorld).applyQuaternion(invHeadQuat);
 
-        ///log.setText(`${world.camera.position.y.toFixed(1)} L: ${leftSpeed.toFixed(1)} R: ${rightSpeed.toFixed(1)} avg: ${avgSpeed.toFixed(1)} spd: ${currentSpeed.toFixed(1)}`);
-      } else {
-        //log.setText('--');
+      // const leftSpeed = leftVelRel.length();
+      // const rightSpeed = rightVelRel.length();
+
+      // incorrect using world movement of controllers
+      const leftSpeed = world.leftHand.moveVector.length();
+      const rightSpeed = world.rightHand.moveVector.length();
+
+      runSpeed += (leftSpeed + rightSpeed) / 2;
+
+      log.setText(`${leftSpeed.toFixed(1)}:${rightSpeed.toFixed(1)}`);
+
+      // if (leftSpeed > 0.5 && rightSpeed > 0.5) {
+      //   const totalSpeed = leftSpeed + rightSpeed;
+
+      //   speeds.push(totalSpeed);
+      //   if (speeds.length > 100) speeds.shift();
+
+      //   const avgSpeed = speeds.reduce((s, n) => s + n, 0) / speeds.length;
+      // log.setText(`${leftSpeed.toFixed(1)}:${rightSpeed.toFixed(1)}:${avgSpeed.toFixed(1)}`);
+
+      // ✅ Get the HMD-facing direction, not dolly's direction
+      // const xrCam = world.renderer.xr.getCamera(); //orld.camera);
+      // xrCam.getWorldDirection(fwd);
+
+      // // Flatten to XZ plane
+      // fwd.y = 0;
+      // if (fwd.lengthSq() > 1e-8 && avgSpeed > 0.01) {
+      //   fwd.normalize();
+
+      //   // ✅ velocity (m/s) * delta (s) = meters per frame
+      //    // tweak
+      //   world.dolly.position.addScaledVector(fwd, avgSpeed * delta * runScale);
+      // }
+      // }
+      if (runSpeed > 0.1) {
+        const xrCam = world.renderer.xr.getCamera(); //orld.camera);
+        xrCam.getWorldDirection(fwd);
+        fwd.y = 0; // Flatten to XZ plane
+        fwd.normalize();
+        world.dolly.position.addScaledVector(fwd, runSpeed * delta * runScale);
       }
     }
+
+    runSpeed *= runDecay;
+    // if (world.VRSessionActive) {
+    //   if (hitStreet) {
+    //     // Make first person move along ground in direction of VR headset
+    //     updateHandVelocity(world.leftController, world.leftHand, delta);
+    //     updateHandVelocity(world.rightController, world.rightHand, delta);
+
+    //     const leftSpeed = world.leftHand.moveVector.length();
+    //     const rightSpeed = world.rightHand.moveVector.length();
+    //     const totalSpeed = leftSpeed + rightSpeed;
+    //     speeds.push(totalSpeed);
+    //     if (speeds.length > 20) speeds.shift();
+    //     const avgSpeed = speeds.reduce((s, n) => s + n, 0) / speeds.length;
+
+    //     // Get the direction the VR headset is facing
+    //     world.dolly.getWorldDirection(tmpVector);
+    //     tmpVector.y = 0; // Keep movement on horizontal plane only
+
+    //     if (tmpVector.lengthSq() > 0 && avgSpeed > 0.01) {
+    //       tmpVector.normalize(); // Get unit direction vector
+    //       world.dolly.position.addScaledVector(tmpVector, avgSpeed); // Move in headset direction
+    //     }
+
+    //     log.setText(`L: ${leftSpeed.toFixed(2)} R: ${rightSpeed.toFixed(2)} avg: ${avgSpeed.toFixed(2)}`);
+    //   }
+    // }
 
     vectorTick.copy(firstPersonVector).multiplyScalar(delta);
 
@@ -366,10 +463,10 @@ function initSpiderverse() {
       // const method = 0;
       // method 1
       // if (method < 1) {
-      if (!hitStreet) {
-        vectorTick.reflect(hitTest.intersection!.face!.normal).multiplyScalar(0.5);
-        firstPersonVector.reflect(hitTest.intersection!.face!.normal).multiplyScalar(0.5);
-      }
+      // if (!hitStreet) {
+      vectorTick.reflect(hitTest.intersection!.face!.normal).multiplyScalar(0.5);
+      firstPersonVector.reflect(hitTest.intersection!.face!.normal).multiplyScalar(0.5);
+      // }
       // } else if (method > 1) {
       //   // place at hit position
       //   // TODO: advance the position along the reflected ray

@@ -62,6 +62,11 @@ const bitumenRoof = {
   height: 13
 } as BuildingAsset;
 
+const roofColliderMaterial = new THREE.MeshBasicMaterial({
+  visible: false,
+  depthWrite: false
+});
+
 const tallAssets = [glassAndConcrete, modernSquareConcrete];
 const shortAssets = [nyBrick];
 const edgeHeight = 0.2;
@@ -124,6 +129,25 @@ export class Building extends THREE.Mesh<THREE.BoxGeometry, THREE.Material[]> {
 
     const edgeXAxisFront = edgeXAxis.clone();
     edgeXAxisFront.position.set(-edgeX, edgeY, 0);
+
+    // roof
+    const roofGeo = new THREE.PlaneGeometry(width, depth);
+    const roof = new THREE.Mesh(roofGeo, roofColliderMaterial);
+
+    // orient flat (XZ plane)
+    roof.rotation.x = -Math.PI / 2;
+
+    // position slightly above the top face to avoid z-fighting
+    roof.position.set(0, height * 0.5 + 0.01, 0);
+
+    // identify this surface in raycasts
+    roof.name = 'buildingRoof';
+    roof.userData.runnable = true;
+    roof.userData.surface = 'roof';
+    roof.userData.building = this;
+
+    // attach to building so it moves together
+    this.add(roof);
     this.add(edgeXAxisFront);
 
     // this.castShadow = true;

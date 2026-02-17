@@ -36,6 +36,7 @@ export function createCityStreets(grid: Grid<any>) {
   // right, left, top, bottom, front, back
   const mesh = new THREE.Mesh(geo, [sideMaterial, sideMaterial, material, sideMaterial, sideMaterial, sideMaterial]);
   mesh.name = 'street';
+  mesh.userData.runnable = true;
   return mesh;
 }
 
