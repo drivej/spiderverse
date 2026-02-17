@@ -21,7 +21,7 @@ function initSpiderverse() {
 
   const log = new VRTextSprite();
   log.position.set(0, 0, -1);
-  world.camera.add(log);
+  // world.camera.add(log);
 
   world.renderer.shadowMap.enabled = true;
 

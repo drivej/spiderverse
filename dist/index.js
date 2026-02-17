@@ -1426,7 +1426,7 @@ function jB() {
     e(), l = Q.dolly;
   });
   const A = new xB();
-  A.position.set(0, 0, -1), Q.camera.add(A), Q.renderer.shadowMap.enabled = !0;
+  A.position.set(0, 0, -1), Q.renderer.shadowMap.enabled = !0;
   const B = lt({ color: 12303291 });
   B.name = "plane", Q.scene.add(B);
   const r = new QB();
